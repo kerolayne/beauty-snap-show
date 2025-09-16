@@ -1,21 +1,24 @@
 import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle } from "lucide-react";
 import { AgendamentoForm, AgendamentoData } from "@/components/AgendamentoForm";
 import { Trabalho, Horario } from "@/types/beauty";
 import { useToast } from "@/hooks/use-toast";
 
-interface BookingProps {
-  trabalho: Trabalho;
-  horario: Horario;
-  onBack: () => void;
-  onSuccess: () => void;
-}
-
-export const Booking = ({ trabalho, horario, onBack, onSuccess }: BookingProps) => {
+export const Booking = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { trabalho, horario } = location.state as { trabalho: Trabalho; horario: Horario } || {};
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const { toast } = useToast();
+
+  // Redirect if no data is available
+  if (!trabalho || !horario) {
+    navigate('/');
+    return null;
+  }
 
   const handleSubmit = async (data: AgendamentoData) => {
     setLoading(true);
@@ -40,7 +43,7 @@ export const Booking = ({ trabalho, horario, onBack, onSuccess }: BookingProps) 
 
       // Redirecionar após alguns segundos
       setTimeout(() => {
-        onSuccess();
+        navigate('/');
       }, 3000);
       
     } catch (error) {
@@ -82,7 +85,7 @@ export const Booking = ({ trabalho, horario, onBack, onSuccess }: BookingProps) 
           </div>
 
           <Button 
-            onClick={onSuccess}
+            onClick={() => navigate('/')}
             className="w-full bg-beauty-gradient hover:opacity-90 transition-opacity"
           >
             Voltar ao Início
@@ -100,7 +103,7 @@ export const Booking = ({ trabalho, horario, onBack, onSuccess }: BookingProps) 
           <Button 
             variant="outline" 
             size="icon"
-            onClick={onBack}
+            onClick={() => navigate(-1)}
             disabled={loading}
           >
             <ArrowLeft className="w-4 h-4" />

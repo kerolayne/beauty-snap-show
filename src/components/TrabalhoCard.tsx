@@ -4,17 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Clock, User, Star } from "lucide-react";
 import { Trabalho } from "@/types/beauty";
 import { formatPrice, formatDuration } from "@/lib/formatters";
+import { Link } from "react-router-dom";
 
 interface TrabalhoCardProps {
   trabalho: Trabalho;
-  onViewDetails: (trabalho: Trabalho) => void;
   averageRating?: number;
   totalReviews?: number;
 }
 
 export const TrabalhoCard = ({ 
   trabalho, 
-  onViewDetails, 
   averageRating = 0, 
   totalReviews = 0 
 }: TrabalhoCardProps) => {
@@ -66,10 +65,12 @@ export const TrabalhoCard = ({
         )}
 
         <Button 
-          onClick={() => onViewDetails(trabalho)}
+          asChild
           className="w-full mt-4 bg-beauty-gradient hover:opacity-90 transition-opacity"
         >
-          Ver Detalhes
+          <Link to={`/trabalho-details/${trabalho.id}`}>
+            Ver Detalhes
+          </Link>
         </Button>
       </CardContent>
     </Card>

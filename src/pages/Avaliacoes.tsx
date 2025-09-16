@@ -1,21 +1,53 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Star, MessageSquare } from "lucide-react";
 import { AvaliacaoCard } from "@/components/AvaliacaoCard";
 import { Avaliacao, Profissional } from "@/types/beauty";
 
-interface AvaliacoesProps {
-  profissional: Profissional;
-  onBack: () => void;
-}
-
-export const Avaliacoes = ({ profissional, onBack }: AvaliacoesProps) => {
+export const Avaliacoes = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [profissional, setProfissional] = useState<Profissional | null>(null);
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Mock data para profissionais
+  useEffect(() => {
+    const mockProfissionais: Profissional[] = [
+      {
+        id: "1",
+        nome: "Maria Silva",
+        especialidade: "Cabeleireira"
+      },
+      {
+        id: "2",
+        nome: "Ana Costa",
+        especialidade: "Massoterapeuta"
+      },
+      {
+        id: "3",
+        nome: "Sofia Oliveira",
+        especialidade: "Esteticista"
+      },
+      {
+        id: "4",
+        nome: "Beatriz Santos",
+        especialidade: "Designer de Sobrancelhas"
+      }
+    ];
+
+    // Find profissional by ID
+    const foundProfissional = mockProfissionais.find(p => p.id === id);
+    if (foundProfissional) {
+      setProfissional(foundProfissional);
+    }
+  }, [id]);
+
   // Mock data para avaliações
   useEffect(() => {
+    if (!profissional) return;
     const mockAvaliacoes: Avaliacao[] = [
       {
         id: "1",
@@ -114,6 +146,29 @@ export const Avaliacoes = ({ profissional, onBack }: AvaliacoesProps) => {
     1: avaliacoes.filter(av => av.nota === 1).length,
   };
 
+  const handleBack = () => {
+    navigate(-1);
+  };
+
+  // Show loading if profissional is not found yet
+  if (!profissional) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 bg-muted rounded w-64"></div>
+            <div className="h-32 bg-muted rounded"></div>
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-24 bg-muted rounded"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -140,7 +195,7 @@ export const Avaliacoes = ({ profissional, onBack }: AvaliacoesProps) => {
           <Button 
             variant="outline" 
             size="icon"
-            onClick={onBack}
+            onClick={handleBack}
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>

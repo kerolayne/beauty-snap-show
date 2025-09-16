@@ -7,11 +7,7 @@ import { Trabalho } from "@/types/beauty";
 import { useToast } from "@/hooks/use-toast";
 import heroImage from "@/assets/beauty-hero.jpg";
 
-interface HomeProps {
-  onViewTrabalho: (trabalho: Trabalho) => void;
-}
-
-export const Home = ({ onViewTrabalho }: HomeProps) => {
+export const Home = () => {
   const [trabalhos, setTrabalhos] = useState<Trabalho[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -224,7 +220,6 @@ export const Home = ({ onViewTrabalho }: HomeProps) => {
                   <TrabalhoCard
                     key={trabalho.id}
                     trabalho={trabalho}
-                    onViewDetails={onViewTrabalho}
                     averageRating={rating.average}
                     totalReviews={rating.total}
                   />

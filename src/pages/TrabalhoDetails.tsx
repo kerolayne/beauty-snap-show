@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,19 +8,113 @@ import { HorarioSelector } from "@/components/HorarioSelector";
 import { Trabalho, Horario } from "@/types/beauty";
 import { formatPrice, formatDuration } from "@/lib/formatters";
 
-interface TrabalhoDetailsProps {
-  trabalho: Trabalho;
-  onBack: () => void;
-  onBooking: (trabalho: Trabalho, horario: Horario) => void;
-}
-
-export const TrabalhoDetails = ({ trabalho, onBack, onBooking }: TrabalhoDetailsProps) => {
+export const TrabalhoDetails = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [trabalho, setTrabalho] = useState<Trabalho | null>(null);
   const [horarios, setHorarios] = useState<Horario[]>([]);
   const [selectedHorario, setSelectedHorario] = useState<Horario>();
   const [loading, setLoading] = useState(true);
 
+  // Mock data para trabalhos
+  useEffect(() => {
+    const mockTrabalhos: Trabalho[] = [
+      {
+        id: "1",
+        profissional_id: "1",
+        titulo: "Corte Feminino + Escova",
+        descricao: "Corte moderno com escova modeladora, perfeito para realçar sua beleza natural",
+        preco: 85.00,
+        imagem_url: "https://images.unsplash.com/photo-1562322140-8baeececf3df?w=500",
+        duracao_minutos: 90,
+        profissional: {
+          id: "1",
+          nome: "Maria Silva",
+          especialidade: "Cabeleireira"
+        }
+      },
+      {
+        id: "2",
+        profissional_id: "1",
+        titulo: "Manicure + Pedicure",
+        descricao: "Cuidado completo para suas unhas com esmaltação perfeita",
+        preco: 45.00,
+        imagem_url: "https://images.unsplash.com/photo-1604654894610-df63bc536371?w=500",
+        duracao_minutos: 60,
+        profissional: {
+          id: "1",
+          nome: "Maria Silva",
+          especialidade: "Manicure"
+        }
+      },
+      {
+        id: "3",
+        profissional_id: "2",
+        titulo: "Massagem Relaxante",
+        descricao: "Massagem terapêutica para alívio do stress e tensões musculares",
+        preco: 120.00,
+        imagem_url: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=500",
+        duracao_minutos: 60,
+        profissional: {
+          id: "2",
+          nome: "Ana Costa",
+          especialidade: "Massoterapeuta"
+        }
+      },
+      {
+        id: "4",
+        profissional_id: "3",
+        titulo: "Limpeza de Pele",
+        descricao: "Limpeza profunda com extração de cravos e aplicação de máscara hidratante",
+        preco: 95.00,
+        imagem_url: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=500",
+        duracao_minutos: 75,
+        profissional: {
+          id: "3",
+          nome: "Sofia Oliveira",
+          especialidade: "Esteticista"
+        }
+      },
+      {
+        id: "5",
+        profissional_id: "4",
+        titulo: "Design de Sobrancelhas",
+        descricao: "Modelagem perfeita com técnica de fio a fio e coloração",
+        preco: 65.00,
+        imagem_url: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500",
+        duracao_minutos: 45,
+        profissional: {
+          id: "4",
+          nome: "Beatriz Santos",
+          especialidade: "Designer de Sobrancelhas"
+        }
+      },
+      {
+        id: "6",
+        profissional_id: "2",
+        titulo: "Depilação com Cera",
+        descricao: "Depilação completa com cera quente e pós-depilação hidratante",
+        preco: 75.00,
+        imagem_url: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=500",
+        duracao_minutos: 50,
+        profissional: {
+          id: "2",
+          nome: "Ana Costa",
+          especialidade: "Depiladora"
+        }
+      }
+    ];
+
+    // Find trabalho by ID
+    const foundTrabalho = mockTrabalhos.find(t => t.id === id);
+    if (foundTrabalho) {
+      setTrabalho(foundTrabalho);
+    }
+  }, [id]);
+
   // Mock data para horários disponíveis
   useEffect(() => {
+    if (!trabalho) return;
     const mockHorarios: Horario[] = [
       {
         id: "1",
@@ -91,10 +186,37 @@ export const TrabalhoDetails = ({ trabalho, onBack, onBooking }: TrabalhoDetails
   };
 
   const handleBooking = () => {
-    if (selectedHorario) {
-      onBooking(trabalho, selectedHorario);
+    if (selectedHorario && trabalho) {
+      // Navigate to booking page with state
+      navigate('/booking', { 
+        state: { 
+          trabalho, 
+          horario: selectedHorario 
+        } 
+      });
     }
   };
+
+  const handleBack = () => {
+    navigate(-1);
+  };
+
+  // Show loading if trabalho is not found yet
+  if (!trabalho) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="animate-pulse space-y-8">
+            <div className="h-8 bg-muted rounded w-64"></div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="h-64 bg-muted rounded-lg"></div>
+              <div className="h-64 bg-muted rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -104,7 +226,7 @@ export const TrabalhoDetails = ({ trabalho, onBack, onBooking }: TrabalhoDetails
           <Button 
             variant="outline" 
             size="icon"
-            onClick={onBack}
+            onClick={handleBack}
             className="shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
