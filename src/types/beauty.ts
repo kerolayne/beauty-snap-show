@@ -52,3 +52,16 @@ export interface Avaliacao {
   agendamento?: Agendamento;
   created_at?: string;
 }
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+
+export interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  token: string;
+}
