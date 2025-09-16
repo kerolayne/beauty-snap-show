@@ -1,6 +1,7 @@
 # Beauty Snap Show
 
 A modern beauty salon booking and showcase application built with React, TypeScript, and Tailwind CSS.
+https://beauty-snap-show-git-main-kerolaynes-projects.vercel.app/
 
 ## Features
 
