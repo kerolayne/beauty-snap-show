@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+// API Configuration - use relative paths for Vercel serverless functions
+const API_BASE_URL = ''
 
 // Validation schemas
 const ServiceSchema = z.object({
