@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { hash } from 'argon2'
 
 const prisma = new PrismaClient()
 
@@ -147,6 +148,7 @@ async function main() {
       data: {
         name: 'Sofia Oliveira',
         email: 'sofia@example.com',
+        passwordHash: await hash('Password123'),
         phone: '+351 912 345 681',
       },
     }),
@@ -154,6 +156,7 @@ async function main() {
       data: {
         name: 'Carlos Ferreira',
         email: 'carlos@example.com',
+        passwordHash: await hash('Password123'),
         phone: '+351 912 345 682',
       },
     }),

@@ -3,6 +3,7 @@ import cors from '@fastify/cors'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 import dotenv from 'dotenv'
+import { authRoutes } from './routes/auth.js'
 
 // Load environment variables
 dotenv.config()
@@ -26,6 +27,9 @@ await app.register(cors, {
     : true,
   credentials: true,
 })
+
+// Register auth routes
+await app.register(authRoutes)
 
 // Initialize Prisma
 const prisma = new PrismaClient()

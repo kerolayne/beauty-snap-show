@@ -34,6 +34,34 @@ const ProfessionalSchema = z.object({
 
 const AppointmentStatusSchema = z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'])
 
+// Auth schemas
+const SignUpRequestSchema = z.object({
+  name: z.string().min(2).max(80),
+  email: z.string().email(),
+  password: z.string().min(8).max(128),
+})
+
+const UserResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+  createdAt: z.string().datetime(),
+})
+
+const ValidationErrorSchema = z.object({
+  code: z.literal('VALIDATION_ERROR'),
+  issues: z.array(z.object({
+    path: z.array(z.union([z.string(), z.number()])),
+    message: z.string(),
+    code: z.string(),
+  })),
+})
+
+const EmailTakenErrorSchema = z.object({
+  code: z.literal('EMAIL_TAKEN'),
+  message: z.string(),
+})
+
 const AppointmentSchema = z.object({
   id: z.string(),
   userId: z.string(),
@@ -90,6 +118,12 @@ export type Appointment = z.infer<typeof AppointmentSchema>
 export type AppointmentStatus = z.infer<typeof AppointmentStatusSchema>
 export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>
 export type Availability = z.infer<typeof AvailabilitySchema>
+
+// Auth types
+export type SignUpRequest = z.infer<typeof SignUpRequestSchema>
+export type UserResponse = z.infer<typeof UserResponseSchema>
+export type ValidationError = z.infer<typeof ValidationErrorSchema>
+export type EmailTakenError = z.infer<typeof EmailTakenErrorSchema>
 
 // Utility functions for date handling
 export function toUTCString(date: Date): string {
@@ -217,6 +251,38 @@ class ApiClient {
   // Health check
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
     return this.request('/health')
+  }
+
+  // Auth API
+  async signup(data: SignUpRequest): Promise<UserResponse> {
+    const response = await fetch(`${this.baseUrl}/api/auth/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    })
+
+    const responseData = await response.json()
+
+    if (!response.ok) {
+      // Handle validation errors
+      if (response.status === 400) {
+        const validationError = ValidationErrorSchema.parse(responseData)
+        throw new Error(validationError.issues.map(issue => issue.message).join(', '))
+      }
+      
+      // Handle email taken error
+      if (response.status === 409) {
+        const emailError = EmailTakenErrorSchema.parse(responseData)
+        throw new Error(emailError.message)
+      }
+      
+      // Handle other errors
+      throw new Error(responseData.message || `HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    return UserResponseSchema.parse(responseData)
   }
 }
 

@@ -145,6 +145,7 @@ The application will be available at:
 ### Testing
 - `npm run test:setup` - Test database setup and connectivity
 - `npm run test:concurrent` - Test concurrent booking prevention
+- `npm run test:signup` - Test user signup functionality
 
 ## API Endpoints
 
@@ -159,6 +160,10 @@ The application will be available at:
 - `POST /api/appointments` - Create a new appointment
 - `PATCH /api/appointments/:id/cancel` - Cancel an appointment
 
+### Authentication
+- `POST /api/auth/signup` - Create a new user account
+- `GET /api/auth/health` - Auth routes health check
+
 ### Health
 - `GET /health` - Health check endpoint
 
@@ -166,7 +171,7 @@ The application will be available at:
 
 The application uses PostgreSQL with the following main entities:
 
-- **User** - Clients who book appointments
+- **User** - Clients who book appointments (with secure password authentication)
 - **Professional** - Beauty service providers
 - **Service** - Available beauty services (haircut, manicure, etc.)
 - **WorkingHour** - Professional availability schedule
