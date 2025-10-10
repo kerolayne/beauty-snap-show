@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { TrabalhoCard } from "@/components/TrabalhoCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -164,6 +165,16 @@ export const Home = () => {
           <p className="text-xl md:text-2xl mb-8 opacity-90">
             Encontre os melhores profissionais de beleza da sua região
           </p>
+          
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+            <Button asChild size="lg" className="w-full sm:w-auto">
+              <Link to="/signup">Create account</Link>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="w-full sm:w-auto bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20">
+              <Link to="/login">Log in</Link>
+            </Button>
+          </div>
           
           {/* Search Bar */}
           <div className="max-w-2xl mx-auto relative">
