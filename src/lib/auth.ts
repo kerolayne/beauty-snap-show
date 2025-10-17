@@ -1,33 +1,25 @@
 // src/lib/auth.ts
 
-import { UserData, LoginCredentials } from '../types/beauty'; // Importe os tipos que você vai criar
-
-const API_BASE_URL = 'http://sua-api.com/api'; // Substitua pelo endereço da sua API
+import { apiClient, UserResponse } from './api';
+import { LoginCredentials, UserData } from '../types/beauty';
 
 /**
  * Função para fazer login do usuário.
- * @param credentials - As credenciais (email/username e senha) do usuário.
+ * @param credentials - As credenciais (email e senha) do usuário.
  * @returns Um objeto com os dados do usuário e o token.
  */
 export async function login(credentials: LoginCredentials): Promise<UserData> {
   try {
-    const response = await fetch(`${API_BASE_URL}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    });
-
-    if (!response.ok) {
-      // Se a resposta não for 200 OK, lança um erro com a mensagem da API
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Falha no login');
-    }
-
-    const userData = await response.json();
-    // Salva o token de autenticação (ex: no localStorage)
-    localStorage.setItem('authToken', userData.token);
+    const userResponse = await apiClient.login(credentials);
+    
+    // Convert UserResponse to UserData format
+    const userData: UserData = {
+      id: userResponse.id,
+      name: userResponse.name,
+      email: userResponse.email,
+      token: localStorage.getItem('authToken') || '',
+    };
+    
     return userData;
   } catch (error) {
     console.error('Erro ao fazer login:', error);
@@ -38,10 +30,14 @@ export async function login(credentials: LoginCredentials): Promise<UserData> {
 /**
  * Função para sair da sessão.
  */
-export function logout(): void {
-  // Remove o token de autenticação do armazenamento local
-  localStorage.removeItem('authToken');
-  // Opcional: Redirecionar o usuário ou limpar estados globais
+export async function logout(): Promise<void> {
+  try {
+    await apiClient.logout();
+  } catch (error) {
+    console.error('Erro ao fazer logout:', error);
+    // Even if logout request fails, clear local storage
+    localStorage.removeItem('authToken');
+  }
 }
 
 /**
@@ -49,7 +45,5 @@ export function logout(): void {
  * @returns Verdadeiro se o token existir, falso caso contrário.
  */
 export function isAuthenticated(): boolean {
-  const token = localStorage.getItem('authToken');
-  // Você pode adicionar uma verificação de validade do token aqui
-  return !!token;
+  return apiClient.isAuthenticated();
 }

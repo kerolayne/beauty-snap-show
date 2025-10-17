@@ -1,7 +1,11 @@
 import { z } from 'zod'
 
-// API Configuration - use relative paths for Vercel serverless functions
-const API_BASE_URL = ''
+// API Configuration - use environment variables with fallbacks
+const API_BASE_URL = 
+  import.meta.env?.VITE_API_URL ||
+  process.env?.VITE_API_URL ||
+  (window as any)?.__API_URL__ ||
+  '/api' // fallback for proxy or same origin
 
 // Validation schemas
 const ServiceSchema = z.object({
@@ -283,6 +287,61 @@ class ApiClient {
     }
 
     return UserResponseSchema.parse(responseData)
+  }
+
+  async login(credentials: { email: string; password: string }): Promise<UserResponse> {
+    const response = await fetch(`${this.baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(credentials),
+      credentials: 'include', // for cookies/sessions
+    })
+
+    const responseData = await response.json()
+
+    if (!response.ok) {
+      // Handle validation errors
+      if (response.status === 400) {
+        const validationError = ValidationErrorSchema.parse(responseData)
+        throw new Error(validationError.issues.map(issue => issue.message).join(', '))
+      }
+      
+      // Handle authentication errors
+      if (response.status === 401) {
+        throw new Error(responseData.message || 'Invalid credentials')
+      }
+      
+      // Handle other errors
+      throw new Error(responseData.message || `HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    // Store auth token if provided
+    if (responseData.token) {
+      localStorage.setItem('authToken', responseData.token)
+    }
+
+    return UserResponseSchema.parse(responseData)
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await fetch(`${this.baseUrl}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+    } catch (error) {
+      console.warn('Logout request failed:', error)
+    } finally {
+      // Always clear local storage
+      localStorage.removeItem('authToken')
+    }
+  }
+
+  isAuthenticated(): boolean {
+    const token = localStorage.getItem('authToken')
+    return !!token
   }
 }
 

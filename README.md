@@ -57,9 +57,33 @@ npm install
 
 3. Set up environment variables:
 ```sh
-cp env.example .env
+cp env.example .env.local
 ```
-Edit `.env` if needed (default values should work for local development).
+Edit `.env.local` with your configuration:
+
+**Development Configuration:**
+```env
+# Database
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/beauty?schema=public"
+
+# Server
+PORT=3001
+NODE_ENV=development
+
+# Timezone
+TZ=Europe/Lisbon
+
+# Frontend API Configuration
+VITE_API_URL=http://localhost:3001
+VITE_FRONT_URL=http://localhost:8080
+```
+
+**Production Configuration:**
+For production deployment, set these environment variables in your hosting platform:
+```env
+VITE_API_URL=https://api.seudominio.com
+VITE_FRONT_URL=https://app.seudominio.com
+```
 
 4. Start the PostgreSQL database:
 ```sh
@@ -95,6 +119,15 @@ The application will be available at:
 - **Frontend**: `http://localhost:8080` (Vite)
 - **Backend API**: `http://localhost:3001`
 - **Database**: `localhost:5432`
+
+### API Configuration
+
+The application uses a centralized API client that automatically handles:
+- **Development**: Proxy configuration routes `/api/*` requests to `http://localhost:3001`
+- **Production**: Direct API calls to the configured `VITE_API_URL`
+- **Environment Detection**: Automatic fallback to relative paths when no environment variable is set
+
+**No hardcoded localhost URLs** - All API calls use environment variables with proper fallbacks.
 
 ### Database Management
 
@@ -162,6 +195,8 @@ The application will be available at:
 
 ### Authentication
 - `POST /api/auth/signup` - Create a new user account
+- `POST /api/auth/login` - User login with email/password
+- `POST /api/auth/logout` - User logout (clears session)
 - `GET /api/auth/health` - Auth routes health check
 
 ### Health

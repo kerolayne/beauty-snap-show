@@ -6,9 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LogIn, AlertCircle } from 'lucide-react';
+import { login } from '@/lib/auth';
+import { useToast } from '@/hooks/use-toast';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -20,17 +23,25 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      // TODO: Implement actual login logic with your auth system
-      // const credentials = { email, password };
-      // await login(credentials);
+      const credentials = { email, password };
+      const userData = await login(credentials);
       
-      // For now, just simulate a successful login
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast({
+        title: "Login successful!",
+        description: `Welcome back, ${userData.name}!`,
+      });
       
       // Redirect to home page after successful login
       navigate('/');
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
+      const errorMessage = err.message || 'Login failed. Please try again.';
+      setError(errorMessage);
+      
+      toast({
+        title: "Login failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
