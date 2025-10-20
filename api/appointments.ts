@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { prisma } from '../_lib/prisma'
+import { prisma } from './_lib/prisma.js'
 import { z } from 'zod'
 
 export const config = { runtime: 'nodejs' as const }

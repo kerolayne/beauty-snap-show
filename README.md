@@ -14,6 +14,7 @@ A modern beauty salon booking and showcase application built with React, TypeScr
 - **Time Zone Support**: Proper handling of Europe/Lisbon timezone
 - **Responsive Design**: Works seamlessly on desktop and mobile devices
 - **Modern UI**: Built with shadcn/ui components and Tailwind CSS
+- **Local Development**: Run locally with Express server and Vite proxy
 
 ## Technologies Used
 
@@ -27,11 +28,12 @@ A modern beauty salon booking and showcase application built with React, TypeScr
 - **Zod** - Runtime type validation
 
 ### Backend
-- **Fastify** - Fast and low overhead web framework
+- **Express** - Fast and minimalist web framework (for local development)
 - **Prisma** - Next-generation ORM for TypeScript
 - **PostgreSQL** - Robust relational database
 - **Docker** - Containerized database setup
 - **TypeScript** - Type-safe backend development
+- **Vercel Serverless Functions** - For production deployment
 
 ## Getting Started
 
@@ -105,20 +107,28 @@ npm run db:seed
 npm run db:generate
 ```
 
-8. Start the backend server:
-```sh
-npm run dev:server
-```
-
-9. In a new terminal, start the frontend development server:
+8. Start both backend and frontend servers:
 ```sh
 npm run dev
 ```
 
+This will start:
+- **API Server** on `http://localhost:3001` (Express with auto-registered routes)
+- **Frontend** on `http://localhost:5173` (Vite dev server with proxy)
+
+Alternatively, run them separately:
+```sh
+# Terminal 1: Start API server
+npm run dev:server
+
+# Terminal 2: Start frontend
+npm run dev:client
+```
+
 The application will be available at:
-- **Frontend**: `http://localhost:8080` (Vite)
-- **Backend API**: `http://localhost:3001`
-- **Database**: `localhost:5432`
+- **Frontend**: `http://localhost:5173` (Vite)
+- **Backend API**: `http://localhost:3001` (Express)
+- **Database**: `localhost:5432` (PostgreSQL)
 
 ### API Configuration
 
