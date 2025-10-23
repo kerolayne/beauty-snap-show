@@ -1,7 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { prisma } from './_lib/prisma.js'
+import { getFirestore } from 'firebase-admin/firestore'
+import { initializeFirebaseAdmin } from './_lib/firebase-admin'
 
 export const config = { runtime: 'nodejs' as const }
+
+// Initialize Firebase Admin SDK
+initializeFirebaseAdmin()
+const db = getFirestore()
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {
@@ -14,20 +19,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const professionals = await prisma.professional.findMany({
-      include: {
-        services: {
-          where: { active: true },
-          select: {
-            id: true,
-            name: true,
-            durationMinutes: true,
-            priceCents: true,
-          },
-        },
-      },
-      orderBy: { name: 'asc' },
+    // Get all professionals ordered by name
+    const professionalsSnapshot = await db.collection('professionals')
+      .orderBy('name')
+      .get()
+
+    // Get all active services
+    const servicesSnapshot = await db.collection('services')
+      .where('active', '==', true)
+      .get()
+
+    // Create a map of services by professional
+    const servicesByProfessional = new Map()
+    servicesSnapshot.docs.forEach(serviceDoc => {
+      const service = { id: serviceDoc.id, ...serviceDoc.data() }
+      if (service.professionalIds) {
+        service.professionalIds.forEach((profId: string) => {
+          if (!servicesByProfessional.has(profId)) {
+            servicesByProfessional.set(profId, [])
+          }
+          servicesByProfessional.get(profId).push({
+            id: service.id,
+            name: service.name,
+            durationMinutes: service.durationMinutes,
+            priceCents: service.priceCents,
+          })
+        })
+      }
     })
+
+    // Map professionals with their services
+    const professionals = professionalsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      services: servicesByProfessional.get(doc.id) || []
+    }))
 
     return res.status(200).json({
       success: true,

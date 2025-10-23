@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react'
-import { apiClient, Service, Professional, Availability } from '@/lib/api'
-import { formatDateTime, formatTime } from '@/lib/api'
+import { apiClient } from '@/lib/api'
+import type { Service, Professional, AvailabilitySlot } from '@/lib/api'
+import { formatDateTime, formatTime } from '@/lib/formatters'
 
 export function BookingExample() {
   const [services, setServices] = useState<Service[]>([])
   const [professionals, setProfessionals] = useState<Professional[]>([])
   const [selectedProfessional, setSelectedProfessional] = useState<string>('')
   const [selectedDate, setSelectedDate] = useState<string>('')
-  const [availability, setAvailability] = useState<Availability | null>(null)
+  const [availability, setAvailability] = useState<{ slots: AvailabilitySlot[] } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>('')
 
@@ -52,22 +53,22 @@ export function BookingExample() {
     }
   }, [selectedProfessional, selectedDate])
 
-  const handleBookAppointment = async (slot: { startsAt: string; endsAt: string }) => {
+  const handleBookAppointment = async (slot: AvailabilitySlot) => {
     if (!selectedProfessional) return
 
     try {
+      // Get current user from Firebase Auth
       const currentUser = apiClient.getCurrentUser()
       if (!currentUser) {
         throw new Error('Please sign in to book an appointment')
       }
-      
+
       // Find a service offered by the selected professional
       const professional = professionals.find(p => p.id === selectedProfessional)
-      const service = professional?.services[0]
-      
-      if (!service) {
+      if (!professional?.services?.length) {
         throw new Error('No service available for this professional')
       }
+      const service = professional.services[0]
 
       const appointment = await apiClient.createAppointment({
         userId: currentUser.uid,
@@ -76,10 +77,10 @@ export function BookingExample() {
         status: 'PENDING',
         startsAt: { seconds: Math.floor(new Date(slot.startsAt).getTime() / 1000), nanoseconds: 0 },
         endsAt: { seconds: Math.floor(new Date(slot.endsAt).getTime() / 1000), nanoseconds: 0 },
-        notes: null,
+        notes: '',
       })
 
-      alert(`Appointment booked successfully!\n${formatDateTime(new Date(appointment.startsAt.seconds * 1000))}`)
+      alert(`Appointment booked successfully!\n${new Date(appointment.startsAt.seconds * 1000).toLocaleDateString()}`)
       
       // Refresh availability
       if (selectedDate) {
@@ -104,83 +105,71 @@ export function BookingExample() {
         </div>
       )}
 
-      {/* Services */}
-      <div>
-        <h2 className="text-xl font-semibold mb-3">Available Services</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {services.map((service) => (
-            <div key={service.id} className="border rounded-lg p-4">
-              <h3 className="font-medium">{service.name}</h3>
-              <p className="text-sm text-gray-600">{service.description}</p>
-              <p className="text-sm">
-                {service.durationMinutes} min • €{(service.priceCents / 100).toFixed(2)}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Professionals */}
-      <div>
-        <h2 className="text-xl font-semibold mb-3">Select Professional</h2>
-        <select
-          value={selectedProfessional}
-          onChange={(e) => setSelectedProfessional(e.target.value)}
-          className="w-full p-2 border rounded"
-        >
-          <option value="">Choose a professional...</option>
-          {professionals.map((professional) => (
-            <option key={professional.id} value={professional.id}>
-              {professional.name} - {professional.services.length} services
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Date Selection */}
-      {selectedProfessional && (
+      <div className="space-y-4">
         <div>
-          <h2 className="text-xl font-semibold mb-3">Select Date</h2>
+          <label className="block text-sm font-medium text-gray-700">Professional</label>
+          <select
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+            value={selectedProfessional}
+            onChange={(e) => setSelectedProfessional(e.target.value)}
+          >
+            <option value="">Select a professional</option>
+            {professionals.map((professional) => (
+              <option key={professional.id} value={professional.id}>
+                {professional.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Date</label>
           <input
             type="date"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
             min={new Date().toISOString().split('T')[0]}
-            className="w-full p-2 border rounded"
           />
         </div>
-      )}
 
-      {/* Availability */}
-      {selectedProfessional && selectedDate && (
-        <div>
-          <h2 className="text-xl font-semibold mb-3">Available Time Slots</h2>
-          {loading ? (
-            <p>Loading availability...</p>
-          ) : availability ? (
-            <div>
-              <p className="text-sm text-gray-600 mb-3">
-                Available slots for {availability.professional.name} on{' '}
-                {new Date(availability.date).toLocaleDateString('pt-PT')}
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                {availability.slots.map((slot, index) => (
+        {loading && (
+          <div className="text-center py-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          </div>
+        )}
+
+        {availability && !loading && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Available Time Slots</h2>
+            <div className="grid grid-cols-3 gap-4">
+              {availability.slots.length > 0 ? (
+                availability.slots.map((slot, index) => (
                   <button
                     key={index}
                     onClick={() => handleBookAppointment(slot)}
-                    className="p-2 border rounded hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                    disabled={!slot.available}
+                    className={`px-4 py-2 rounded transition-colors ${
+                      slot.available
+                        ? 'bg-primary text-white hover:bg-primary-dark'
+                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    }`}
                   >
-                    {formatTime(new Date(slot.startsAt))}
+                    {new Date(slot.startsAt).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
                   </button>
-                ))}
-              </div>
-              {availability.slots.length === 0 && (
-                <p className="text-gray-500">No available slots for this date.</p>
+                ))
+              ) : (
+                <p className="col-span-3 text-gray-500 italic">
+                  No available slots for this date
+                </p>
               )}
             </div>
-          ) : null}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

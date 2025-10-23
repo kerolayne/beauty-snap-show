@@ -8,14 +8,24 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LogIn, AlertCircle } from 'lucide-react';
 import { login } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/lib/useAuth';
 
-const Login: React.FC = () => {
+function Login() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const { user } = useAuth();
+  
+  // Redirect if user is already logged in
+  React.useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,11 +38,10 @@ const Login: React.FC = () => {
       
       toast({
         title: "Login successful!",
-        description: `Welcome back, ${userData.name}!`,
+        description: `Welcome back${userData.name ? `, ${userData.name}` : ''}!`,
       });
       
-      // Redirect to home page after successful login
-      navigate('/');
+      // No need to navigate here as the useEffect will handle it
     } catch (err: any) {
       const errorMessage = err.message || 'Login failed. Please try again.';
       setError(errorMessage);

@@ -1,13 +1,35 @@
 import { z } from 'zod'
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  query, 
+  where,
+  addDoc,
+  updateDoc,
+  Timestamp,
+  orderBy,
+} from 'firebase/firestore'
+import { getAuth } from 'firebase/auth'
+import firebaseApp from './firebase'
 
-// API Configuration - use environment variables with fallbacks
-const API_BASE_URL = 
-  import.meta.env?.VITE_API_URL ||
-  process.env?.VITE_API_URL ||
-  (window as any)?.__API_URL__ ||
-  '/api' // fallback for proxy or same origin
+// Get Firestore and Auth instances
+const db = getFirestore(firebaseApp)
+const auth = getAuth(firebaseApp)
 
 // Validation schemas
+const FirestoreTimestampSchema = z.object({
+  seconds: z.number(),
+  nanoseconds: z.number(),
+})
+
+// Helper to convert Firestore Timestamp to ISO string
+const firestoreTimestampToISO = (timestamp: { seconds: number; nanoseconds: number }) => {
+  return new Timestamp(timestamp.seconds, timestamp.nanoseconds).toDate().toISOString()
+}
+
 const ServiceSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -15,8 +37,8 @@ const ServiceSchema = z.object({
   durationMinutes: z.number(),
   priceCents: z.number(),
   active: z.boolean(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: FirestoreTimestampSchema,
+  updatedAt: FirestoreTimestampSchema,
 })
 
 const ProfessionalSchema = z.object({
@@ -26,57 +48,34 @@ const ProfessionalSchema = z.object({
   phone: z.string().nullable(),
   bio: z.string().nullable(),
   avatarUrl: z.string().nullable(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: FirestoreTimestampSchema,
+  updatedAt: FirestoreTimestampSchema,
   services: z.array(z.object({
     id: z.string(),
     name: z.string(),
     durationMinutes: z.number(),
     priceCents: z.number(),
   })),
+  workingHours: z.array(z.object({
+    dayOfWeek: z.number(),
+    startTime: z.string(),
+    endTime: z.string(),
+  })).optional(),
 })
 
 const AppointmentStatusSchema = z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'])
-
-// Auth schemas
-const SignUpRequestSchema = z.object({
-  name: z.string().min(2).max(80),
-  email: z.string().email(),
-  password: z.string().min(8).max(128),
-})
-
-const UserResponseSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  email: z.string(),
-  createdAt: z.string().datetime(),
-})
-
-const ValidationErrorSchema = z.object({
-  code: z.literal('VALIDATION_ERROR'),
-  issues: z.array(z.object({
-    path: z.array(z.union([z.string(), z.number()])),
-    message: z.string(),
-    code: z.string(),
-  })),
-})
-
-const EmailTakenErrorSchema = z.object({
-  code: z.literal('EMAIL_TAKEN'),
-  message: z.string(),
-})
 
 const AppointmentSchema = z.object({
   id: z.string(),
   userId: z.string(),
   professionalId: z.string(),
   serviceId: z.string(),
-  startsAt: z.string().datetime(),
-  endsAt: z.string().datetime(),
+  startsAt: FirestoreTimestampSchema,
+  endsAt: FirestoreTimestampSchema,
   status: AppointmentStatusSchema,
   notes: z.string().nullable(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: FirestoreTimestampSchema,
+  updatedAt: FirestoreTimestampSchema,
   user: z.object({
     id: z.string(),
     name: z.string(),
@@ -98,6 +97,159 @@ const AvailabilitySlotSchema = z.object({
   endsAt: z.string().datetime(),
   available: z.boolean(),
 })
+
+// Type exports
+export type Service = z.infer<typeof ServiceSchema>
+export type Professional = z.infer<typeof ProfessionalSchema>
+export type Appointment = z.infer<typeof AppointmentSchema>
+export type AppointmentStatus = z.infer<typeof AppointmentStatusSchema>
+export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>
+export type Availability = {
+  professional: {
+    id: string
+    name: string
+  }
+  date: string
+  slots: AvailabilitySlot[]
+}
+export type LoginCredentials = {
+  email: string
+  password: string
+}
+
+// Convert Firestore document data to our schema types
+const convertServiceDoc = (doc: any): Service => {
+  const data = doc.data()
+  return ServiceSchema.parse({
+    id: doc.id,
+    ...data,
+  })
+}
+
+const convertProfessionalDoc = (doc: any): Professional => {
+  const data = doc.data()
+  return ProfessionalSchema.parse({
+    id: doc.id,
+    ...data,
+  })
+}
+
+const convertAppointmentDoc = (doc: any): Appointment => {
+  const data = doc.data()
+  return AppointmentSchema.parse({
+    id: doc.id,
+    ...data,
+  })
+}
+
+// Firestore API Client implementation
+class FirestoreApiClient {
+  async getServices(): Promise<Service[]> {
+    const servicesRef = collection(db, 'services')
+    const q = query(servicesRef, where('active', '==', true), orderBy('name'))
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map(convertServiceDoc)
+  }
+
+  async getProfessionals(): Promise<Professional[]> {
+    const professionalsRef = collection(db, 'professionals')
+    const q = query(professionalsRef, orderBy('name'))
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map(convertProfessionalDoc)
+  }
+
+  async getProfessional(id: string): Promise<Professional> {
+    const docRef = doc(db, 'professionals', id)
+    const snapshot = await getDoc(docRef)
+    if (!snapshot.exists()) {
+      throw new Error('Professional not found')
+    }
+    return convertProfessionalDoc(snapshot)
+  }
+
+  async getAppointments(userId?: string): Promise<Appointment[]> {
+    const appointmentsRef = collection(db, 'appointments')
+    let q
+    
+    if (userId) {
+      q = query(appointmentsRef, where('userId', '==', userId), orderBy('startsAt', 'desc'))
+    } else {
+      q = query(appointmentsRef, orderBy('startsAt', 'desc'))
+    }
+    
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map(convertAppointmentDoc)
+  }
+
+  async createAppointment(data: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt' | 'user'>): Promise<Appointment> {
+    const user = auth.currentUser
+    if (!user) {
+      throw new Error('You must be logged in to create an appointment')
+    }
+
+    const appointmentData = {
+      ...data,
+      userId: user.uid,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      user: {
+        id: user.uid,
+        name: user.displayName || '',
+        email: user.email || '',
+      },
+    }
+
+    const docRef = await addDoc(collection(db, 'appointments'), appointmentData)
+    const newDoc = await getDoc(docRef)
+    return convertAppointmentDoc(newDoc)
+  }
+
+  getCurrentUser() {
+    return auth.currentUser
+  }
+
+  async getAvailability(professionalId: string, date: string): Promise<Availability> {
+    const response = await fetch(`/api/professionals/${professionalId}/availability?date=${date}`)
+    if (!response.ok) {
+      throw new Error('Failed to get availability')
+    }
+    const data = await response.json()
+    return {
+      professional: data.data.professional,
+      date: data.data.date,
+      slots: data.data.slots,
+    }
+  }
+
+  async cancelAppointment(id: string): Promise<Appointment> {
+    const user = auth.currentUser
+    if (!user) {
+      throw new Error('You must be logged in to cancel an appointment')
+    }
+
+    const appointmentRef = doc(db, 'appointments', id)
+    const appointmentSnap = await getDoc(appointmentRef)
+    
+    if (!appointmentSnap.exists()) {
+      throw new Error('Appointment not found')
+    }
+
+    const appointment = convertAppointmentDoc(appointmentSnap)
+    if (appointment.userId !== user.uid) {
+      throw new Error('You can only cancel your own appointments')
+    }
+
+    await updateDoc(appointmentRef, {
+      status: 'CANCELLED' as AppointmentStatus,
+      updatedAt: Timestamp.now(),
+    })
+
+    const updatedDoc = await getDoc(appointmentRef)
+    return convertAppointmentDoc(updatedDoc)
+  }
+}
+
+export const apiClient = new FirestoreApiClient()
 
 const AvailabilitySchema = z.object({
   professional: z.object({

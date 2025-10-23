@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { apiClient, SignUpRequest, UserResponse } from '@/lib/api'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,20 +7,41 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { UserPlus, CheckCircle, AlertCircle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { signup, onAuthStateChange } from '@/lib/auth'
+import { UserData } from '@/types/beauty'
+import { getAuth, updateProfile } from 'firebase/auth'
+
+type SignUpForm = {
+  name: string
+  email: string
+  password: string
+}
 
 export default function Signup() {
-  const [form, setForm] = useState<SignUpRequest>({
+  const navigate = useNavigate()
+  const [form, setForm] = useState<SignUpForm>({
     name: '',
     email: '',
     password: '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<UserResponse | null>(null)
+  const [success, setSuccess] = useState<UserData | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const { toast } = useToast()
 
-  const validateField = (field: keyof SignUpRequest, value: string): string | null => {
+  // Redirect if user is already logged in
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((user) => {
+      if (user) {
+        navigate('/')
+      }
+    })
+
+    return () => unsubscribe()
+  }, [navigate])
+
+  const validateField = (field: keyof SignUpForm, value: string): string | null => {
     switch (field) {
       case 'name':
         if (!value.trim()) return 'Name is required'
@@ -48,7 +69,7 @@ export default function Signup() {
     }
   }
 
-  const handleInputChange = (field: keyof SignUpRequest, value: string) => {
+  const handleInputChange = (field: keyof SignUpForm, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }))
     
     // Clear field error when user starts typing
@@ -75,7 +96,7 @@ export default function Signup() {
     // Validate all fields
     const errors: Record<string, string> = {}
     Object.entries(form).forEach(([field, value]) => {
-      const error = validateField(field as keyof SignUpRequest, value)
+      const error = validateField(field as keyof SignUpForm, value)
       if (error) {
         errors[field] = error
       }
@@ -89,12 +110,25 @@ export default function Signup() {
     setLoading(true)
     
     try {
-      const user = await apiClient.signup(form)
-      setSuccess(user)
+      // Create user with Firebase Authentication
+      const userData = await signup({
+        email: form.email,
+        password: form.password,
+      })
+
+      // Update the user's display name
+      const auth = getAuth()
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, {
+          displayName: form.name
+        })
+      }
+      
+      setSuccess(userData)
       
       toast({
         title: "Account created successfully!",
-        description: `Welcome, ${user.name}! You can now book appointments.`,
+        description: `Welcome, ${form.name}! You can now book appointments.`,
       })
       
       // Reset form after successful signup

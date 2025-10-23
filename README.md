@@ -1,6 +1,6 @@
 # Beauty Snap Show
 
-A modern beauty salon booking and showcase application built with React, TypeScript, Tailwind CSS, and a production-ready PostgreSQL backend with Prisma ORM.
+A modern beauty salon booking and showcase application built with React, TypeScript, Tailwind CSS, and Firebase backend.
 
 **Live Demo**: https://beauty-snap-show-git-main-kerolaynes-projects.vercel.app/
 
@@ -14,7 +14,7 @@ A modern beauty salon booking and showcase application built with React, TypeScr
 - **Time Zone Support**: Proper handling of Europe/Lisbon timezone
 - **Responsive Design**: Works seamlessly on desktop and mobile devices
 - **Modern UI**: Built with shadcn/ui components and Tailwind CSS
-- **Local Development**: Run locally with Express server and Vite proxy
+- **Real-time Updates**: Using Firebase Realtime Database features
 
 ## Technologies Used
 
@@ -24,16 +24,16 @@ A modern beauty salon booking and showcase application built with React, TypeScr
 - **React** - UI library
 - **shadcn/ui** - Beautiful and accessible UI components
 - **Tailwind CSS** - Utility-first CSS framework
-- **React Query** - Data fetching and caching
+- **Firebase SDK** - Firebase client library
 - **Zod** - Runtime type validation
 
 ### Backend
-- **Express** - Fast and minimalist web framework (for local development)
-- **Prisma** - Next-generation ORM for TypeScript
-- **PostgreSQL** - Robust relational database
-- **Docker** - Containerized database setup
+- **Firebase** - Backend as a Service (BaaS)
+  - Firestore - NoSQL database
+  - Authentication - User management
+  - Cloud Functions - Serverless backend logic
+  - Hosting - Web hosting
 - **TypeScript** - Type-safe backend development
-- **Vercel Serverless Functions** - For production deployment
 
 ## Getting Started
 
@@ -41,8 +41,8 @@ A modern beauty salon booking and showcase application built with React, TypeScr
 
 Make sure you have the following installed:
 - **Node.js 20+** - You can install using [nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-- **Docker** - For running PostgreSQL database locally
 - **npm** - Package manager (comes with Node.js)
+- **Firebase CLI** - For deploying to Firebase (`npm install -g firebase-tools`)
 
 ### Installation
 
@@ -57,47 +57,49 @@ cd beauty-snap-show
 npm install
 ```
 
-3. Set up environment variables:
+3. Firebase Setup:
+   - Create a new project in [Firebase Console](https://console.firebase.google.com/)
+   - Enable Authentication, Firestore, and Hosting
+   - Download your Firebase Admin SDK service account key:
+     - Go to Project Settings > Service Accounts
+     - Click "Generate New Private Key"
+     - Save as `firebase-service-account.json` in the project root
+
+4. Set up environment variables:
 ```sh
 cp env.example .env.local
 ```
-Edit `.env.local` with your configuration:
 
-**Development Configuration:**
+Edit `.env.local` with your Firebase configuration:
+
 ```env
-# Database
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/beauty?schema=public"
+# Firebase Config
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_PRIVATE_KEY="your-private-key"
+FIREBASE_CLIENT_EMAIL=your-client-email
 
-# Server
-PORT=3001
-NODE_ENV=development
+# Frontend Firebase Config
+VITE_FIREBASE_API_KEY=your-api-key
+VITE_FIREBASE_AUTH_DOMAIN=your-auth-domain
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-storage-bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
+VITE_FIREBASE_APP_ID=your-app-id
 
 # Timezone
 TZ=Europe/Lisbon
-
-# Frontend API Configuration
-VITE_API_URL=http://localhost:3001
-VITE_FRONT_URL=http://localhost:8080
 ```
 
-**Production Configuration:**
-For production deployment, set these environment variables in your hosting platform:
-```env
-VITE_API_URL=https://api.seudominio.com
-VITE_FRONT_URL=https://app.seudominio.com
-```
-
-4. Start the PostgreSQL database:
+5. Initialize Firebase:
 ```sh
-npm run db:up
+firebase login
+firebase init
 ```
 
-5. Run database migrations:
-```sh
-npm run db:migrate
-```
-
-6. Seed the database with sample data:
+Choose the following features:
+- Firestore
+- Hosting
+- Functions (optional)
 ```sh
 npm run db:seed
 ```
@@ -197,20 +199,75 @@ The application uses a centralized API client that automatically handles:
 
 ### Professionals
 - `GET /api/professionals` - List all professionals with their services
-- `GET /api/professionals/:id/availability?date=YYYY-MM-DD` - Get availability for a specific professional and date
+- `GET /api/professionals/:id/availability` - Get availability for a specific professional
 
 ### Appointments
 - `POST /api/appointments` - Create a new appointment
 - `PATCH /api/appointments/:id/cancel` - Cancel an appointment
 
 ### Authentication
-- `POST /api/auth/signup` - Create a new user account
-- `POST /api/auth/login` - User login with email/password
-- `POST /api/auth/logout` - User logout (clears session)
-- `GET /api/auth/health` - Auth routes health check
+- Firebase Authentication handles all auth-related operations
 
 ### Health
 - `GET /health` - Health check endpoint
+
+## Firestore Data Structure
+
+The application uses the following collections:
+
+### professionals
+```typescript
+{
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  bio: string | null;
+  avatarUrl: string | null;
+  services: {
+    id: string;
+    name: string;
+    durationMinutes: number;
+    priceCents: number;
+  }[];
+  workingHours: {
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+  }[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+### appointments
+```typescript
+{
+  id: string;
+  userId: string;
+  professionalId: string;
+  serviceId: string;
+  startsAt: Timestamp;
+  endsAt: Timestamp;
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+  notes: string | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+### services
+```typescript
+{
+  id: string;
+  name: string;
+  description: string | null;
+  durationMinutes: number;
+  priceCents: number;
+  active: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
 
 ## Database Schema
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Calendar, User, Phone, MessageSquare } from "lucide-react";
 import { Trabalho, Horario } from "@/types/beauty";
 import { formatPrice, formatDate, formatTime, isValidPhone } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/useAuth";
 
 interface AgendamentoFormProps {
   trabalho: Trabalho;
@@ -23,11 +24,23 @@ export interface AgendamentoData {
 }
 
 export const AgendamentoForm = ({ trabalho, horario, onSubmit, loading }: AgendamentoFormProps) => {
+  const { user } = useAuth();
   const [nomeCliente, setNomeCliente] = useState("");
   const [telefone, setTelefone] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
+
+  // Preencher dados do usuário quando disponível
+  useEffect(() => {
+    if (user) {
+      setNomeCliente(user.displayName || "");
+      // Se o user tiver número de telefone salvo no profile
+      if (user.phoneNumber) {
+        setTelefone(user.phoneNumber);
+      }
+    }
+  }, [user]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -106,7 +119,14 @@ export const AgendamentoForm = ({ trabalho, horario, onSubmit, loading }: Agenda
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="nome">Nome completo *</Label>
+              <Label htmlFor="nome">
+                <span className="flex items-center gap-2">
+                  Nome completo *
+                  {user?.displayName && (
+                    <span className="text-xs text-muted-foreground">(da sua conta)</span>
+                  )}
+                </span>
+              </Label>
               <Input
                 id="nome"
                 value={nomeCliente}
@@ -120,7 +140,14 @@ export const AgendamentoForm = ({ trabalho, horario, onSubmit, loading }: Agenda
             </div>
 
             <div>
-              <Label htmlFor="telefone">Telefone *</Label>
+              <Label htmlFor="telefone">
+                <span className="flex items-center gap-2">
+                  Telefone *
+                  {user?.phoneNumber && (
+                    <span className="text-xs text-muted-foreground">(da sua conta)</span>
+                  )}
+                </span>
+              </Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input

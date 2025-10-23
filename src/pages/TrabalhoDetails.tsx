@@ -114,7 +114,8 @@ export const TrabalhoDetails = () => {
 
   // Mock data para horários disponíveis
   useEffect(() => {
-    if (!trabalho) return;
+    if (!trabalho?.id || !trabalho?.profissional_id) return;
+    
     const mockHorarios: Horario[] = [
       {
         id: "1",
@@ -170,7 +171,7 @@ export const TrabalhoDetails = () => {
       setHorarios(mockHorarios);
       setLoading(false);
     }, 500);
-  }, [trabalho.id, trabalho.profissional_id]);
+  }, [trabalho]);
 
   // Mock rating data
   const rating = {

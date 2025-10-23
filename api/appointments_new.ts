@@ -83,7 +83,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const startsAt = new Date(startsAtISO)
     const endsAt = new Date(startsAt.getTime() + serviceData.durationMinutes * 60 * 1000)
 
-    // Create appointment with transaction to handle race conditions
     try {
       const result = await db.runTransaction(async (transaction) => {
         // Check for conflicts within the transaction
@@ -107,6 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Create new appointment
         const appointmentRef = db.collection('appointments').doc()
         const appointmentData = {
+          id: appointmentRef.id,
           userId,
           professionalId,
           serviceId,
@@ -132,20 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         transaction.create(appointmentRef, appointmentData)
-        return { id: appointmentRef.id, ...appointmentData }
-      })
-
-      return res.status(201).json({
-        success: true,
-        data: result,
-      })
-            name: serviceData.name,
-            durationMinutes: serviceData.durationMinutes,
-          },
-        }
-
-        transaction.create(appointmentRef, appointmentData)
-        return { id: appointmentRef.id, ...appointmentData }
+        return appointmentData
       })
 
       return res.status(201).json({
@@ -169,63 +156,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 }
-            name: serviceData.name,
-            durationMinutes: serviceData.durationMinutes,
-          },
-        }
-
-        transaction.create(appointmentRef, appointmentData)
-        return { id: appointmentRef.id, ...appointmentData }
-      })
-
-      return res.status(201).json({
-        success: true,
-        data: result,
-      })
-    } catch (error: any) {
-      if (error.message === 'APPOINTMENT_CONFLICT') {
-        return res.status(409).json({
-          success: false,
-          error: 'This time slot is already booked',
-        })
-      }
-      throw error
-    }
-  } catch (error: any) {
-    console.error('Error creating appointment:', error)
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    })
-  }
-}
-        success: true,
-        data: appointment,
-      })
-    } catch (error: any) {
-      if (error.message === 'APPOINTMENT_CONFLICT') {
-        return res.status(409).json({
-          success: false,
-          error: 'Time slot is no longer available',
-        })
-      }
-      throw error
-    }
-  } catch (error: any) {
-    console.error('appointments_error', error)
-    
-    // Handle PostgreSQL exclusion constraint violation
-    if (error.code === 'P0001' || error.message?.includes('exclusion constraint')) {
-      return res.status(409).json({
-        success: false,
-        error: 'Time slot is no longer available',
-      })
-    }
-
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to create appointment',
-    })
-  }
-}
-

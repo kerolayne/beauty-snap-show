@@ -1,7 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { prisma } from './_lib/prisma.js'
+import { getFirestore } from 'firebase-admin/firestore'
+import { initializeFirebaseAdmin } from './_lib/firebase-admin'
 
 export const config = { runtime: 'nodejs' as const }
+
+// Initialize Firebase Admin SDK
+initializeFirebaseAdmin()
+const db = getFirestore()
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {
@@ -14,10 +19,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const services = await prisma.service.findMany({
-      where: { active: true },
-      orderBy: { name: 'asc' },
-    })
+    const servicesSnapshot = await db.collection('services')
+      .where('active', '==', true)
+      .orderBy('name')
+      .get()
+
+    const services = servicesSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }))
 
     return res.status(200).json({
       success: true,
