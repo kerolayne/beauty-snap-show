@@ -93,11 +93,62 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .where('status', 'in', ['PENDING', 'CONFIRMED'])
         )
 
-        const conflicts = conflictsQuery.docs.filter(doc => {
+        const hasConflicts = conflictsQuery.docs.some(doc => {
           const appointment = doc.data()
           const appointmentStart = appointment.startsAt.toDate()
           const appointmentEnd = appointment.endsAt.toDate()
           return (startsAt < appointmentEnd && endsAt > appointmentStart)
+        })
+
+        if (conflicts.length > 0) {
+          throw new Error('APPOINTMENT_CONFLICT')
+        }
+
+        // Create new appointment
+        const appointmentRef = db.collection('appointments').doc()
+        const appointmentData = {
+          userId,
+          professionalId,
+          serviceId,
+          startsAt: Timestamp.fromDate(startsAt),
+          endsAt: Timestamp.fromDate(endsAt),
+          status: 'PENDING',
+          notes: null,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+          user: {
+            id: userId,
+            name: userData.name,
+            email: userData.email,
+          },
+          professional: {
+            id: professionalId,
+            name: professionalData.name,
+          },
+          service: {
+            id: serviceId,
+            name: serviceData.name,
+            durationMinutes: serviceData.durationMinutes,
+          }
+        }
+
+        await transaction.create(appointmentRef, appointmentData)
+        return { id: appointmentRef.id, ...appointmentData }
+      })
+
+      return res.status(201).json({
+        success: true,
+        data: result
+      })
+    } catch (error: any) {
+      if (error.message === 'APPOINTMENT_CONFLICT') {
+        return res.status(409).json({
+          success: false,
+          error: 'This time slot is already booked'
+        })
+      }
+      throw error
+    }
         })
 
         if (conflicts.length > 0) {
@@ -128,50 +179,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             id: serviceId,
             name: serviceData.name,
             durationMinutes: serviceData.durationMinutes,
-          },
-        }
-
-        transaction.create(appointmentRef, appointmentData)
-        return { id: appointmentRef.id, ...appointmentData }
-      })
-
-      return res.status(201).json({
-        success: true,
-        data: result,
-      })
-            name: serviceData.name,
-            durationMinutes: serviceData.durationMinutes,
-          },
-        }
-
-        transaction.create(appointmentRef, appointmentData)
-        return { id: appointmentRef.id, ...appointmentData }
-      })
-
-      return res.status(201).json({
-        success: true,
-        data: result,
-      })
-    } catch (error: any) {
-      if (error.message === 'APPOINTMENT_CONFLICT') {
-        return res.status(409).json({
-          success: false,
-          error: 'This time slot is already booked',
-        })
-      }
-      throw error
-    }
-  } catch (error: any) {
-    console.error('Error creating appointment:', error)
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    })
-  }
-}
-            name: serviceData.name,
-            durationMinutes: serviceData.durationMinutes,
-          },
+            name: serviceData.name
+          }
         }
 
         transaction.create(appointmentRef, appointmentData)

@@ -25,26 +25,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const auth = getAuth(firebaseApp);
     
+    // Primeiro, tenta recuperar o usuário atual
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      getUserProfile(currentUser.uid)
+        .then(profile => {
+          const authUser = {
+            ...currentUser,
+            profile
+          } as AuthUser;
+          setUser(authUser);
+          setUserProfile(profile);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error('Erro ao carregar perfil:', err);
+          setError('Erro ao carregar perfil do usuário');
+          setLoading(false);
+        });
+    }
+
+    // Então configura o listener para mudanças
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Buscar o perfil do usuário
-        const profile = await getUserProfile(firebaseUser.uid);
-        const authUser = {
-          ...firebaseUser,
-          profile
-        } as AuthUser;
-        
-        setUser(authUser);
-        setUserProfile(profile);
-      } else {
-        setUser(null);
-        setUserProfile(null);
+      try {
+        if (firebaseUser) {
+          // Buscar o perfil do usuário
+          const profile = await getUserProfile(firebaseUser.uid);
+          const authUser = {
+            ...firebaseUser,
+            profile
+          } as AuthUser;
+          
+          setUser(authUser);
+          setUserProfile(profile);
+          setError(null);
+        } else {
+          setUser(null);
+          setUserProfile(null);
+          setError(null);
+        }
+      } catch (err) {
+        console.error('Erro ao processar alteração de autenticação:', err);
+        setError('Erro ao atualizar estado do usuário');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();

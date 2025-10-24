@@ -30,15 +30,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .get()
 
     // Create a map of services by professional
-    const servicesByProfessional = new Map()
+    interface Service {
+      id: string;
+      name: string;
+      professionalIds: string[];
+      durationMinutes: number;
+      priceCents: number;
+    }
+
+    const servicesByProfessional = new Map<string, Array<{
+      id: string;
+      name: string;
+      durationMinutes: number;
+      priceCents: number;
+    }>>()
+
     servicesSnapshot.docs.forEach(serviceDoc => {
-      const service = { id: serviceDoc.id, ...serviceDoc.data() }
+      const service = { id: serviceDoc.id, ...serviceDoc.data() } as Service
       if (service.professionalIds) {
         service.professionalIds.forEach((profId: string) => {
-          if (!servicesByProfessional.has(profId)) {
-            servicesByProfessional.set(profId, [])
+          let services = servicesByProfessional.get(profId)
+          if (!services) {
+            services = []
+            servicesByProfessional.set(profId, services)
           }
-          servicesByProfessional.get(profId).push({
+          services.push({
             id: service.id,
             name: service.name,
             durationMinutes: service.durationMinutes,

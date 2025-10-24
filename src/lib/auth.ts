@@ -5,9 +5,26 @@ import firebaseApp from './firebase';
 
 const auth = getAuth(firebaseApp);
 
+// Configura a persistência para LOCAL
+import { browserLocalPersistence, setPersistence } from 'firebase/auth';
+
+// Configura persistência logo ao inicializar
+setPersistence(auth, browserLocalPersistence)
+  .catch((error) => {
+    console.error('Erro ao configurar persistência:', error);
+  });
+
 // Verifica se há uma sessão ativa
 export const checkSession = (): Promise<User | null> => {
   return new Promise((resolve) => {
+    // Primeiro verifica se já tem um usuário
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      resolve(currentUser);
+      return;
+    }
+
+    // Se não tiver, aguarda o evento de mudança de estado
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       unsubscribe();
       resolve(user);

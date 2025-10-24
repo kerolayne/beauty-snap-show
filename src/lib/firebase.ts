@@ -14,17 +14,34 @@ const firebaseConfig = {
 
 let firebaseApp: FirebaseApp;
 
+// Log das configurações (removendo dados sensíveis)
+console.log('Firebase Config:', {
+  authDomain: firebaseConfig.authDomain,
+  projectId: firebaseConfig.projectId,
+  storageBucket: firebaseConfig.storageBucket,
+  messagingSenderId: firebaseConfig.messagingSenderId,
+});
+
 try {
   // Verifica se já existe uma instância do Firebase
   if (!getApps().length) {
+    console.log('Inicializando nova instância do Firebase...');
     firebaseApp = initializeApp(firebaseConfig);
     
-    // Emuladores removidos para usar o backend real do Firebase
+    // Inicializa Firestore com configurações específicas
+    const db = getFirestore(firebaseApp);
+    console.log('Firestore inicializado');
+
+    // Inicializa Auth
+    const auth = getAuth(firebaseApp);
+    console.log('Auth inicializado');
   } else {
+    console.log('Usando instância existente do Firebase');
     firebaseApp = getApps()[0];
   }
 } catch (error) {
   console.error('Erro ao inicializar Firebase:', error);
+  console.error('Detalhes do erro:', JSON.stringify(error, null, 2));
   throw new Error('Falha ao inicializar o Firebase. Verifique suas credenciais.');
 }
 

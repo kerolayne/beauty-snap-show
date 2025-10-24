@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Autenticação básica
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Verifica se o usuário está acessando seus próprios dados
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Regras para coleção users
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+    }
+    
+    // Regras para coleção services
+    match /services/{serviceId} {
+      allow read: if true; // Permite leitura pública
+      allow write: if false; // Apenas através do admin
+    }
+    
+    // Regras para coleção professionals
+    match /professionals/{professionalId} {
+      allow read: if true; // Permite leitura pública
+      allow write: if false; // Apenas através do admin
+    }
+    
+    // Regras para coleção appointments
+    match /appointments/{appointmentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isOwner(resource.data.userId);
+    }
+  }
+}

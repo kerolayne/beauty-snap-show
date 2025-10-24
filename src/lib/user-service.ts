@@ -1,5 +1,5 @@
 import { getFirestore, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { User } from 'firebase/auth';
+import { User, getAuth } from 'firebase/auth';
 import { UserProfile, UserRole } from '@/types/auth';
 import firebaseApp from './firebase';
 
@@ -30,8 +30,33 @@ export async function createUserProfile(user: User, role: UserRole = 'client'): 
 }
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  const userDoc = await getDoc(doc(db, 'users', uid));
-  return userDoc.exists() ? userDoc.data() as UserProfile : null;
+  try {
+    // Validação do UID
+    if (!uid) {
+      console.error('UID inválido ao buscar perfil');
+      return null;
+    }
+
+    const userDoc = await getDoc(doc(db, 'users', uid));
+    
+    if (!userDoc.exists()) {
+      console.log(`Perfil não encontrado para o UID: ${uid}, tentando criar...`);
+      // Se o perfil não existe, podemos criar um perfil básico
+      const auth = getAuth(firebaseApp);
+      const firebaseUser = auth.currentUser;
+      
+      if (firebaseUser && firebaseUser.uid === uid) {
+        return await createUserProfile(firebaseUser);
+      }
+      return null;
+    }
+    
+    return userDoc.data() as UserProfile;
+  } catch (error) {
+    console.error('Erro ao buscar perfil do usuário:', error);
+    // Re-throw com mensagem mais clara
+    throw new Error('Não foi possível carregar o perfil do usuário. Por favor, tente novamente.');
+  }
 }
 
 export async function updateUserProfile(uid: string, data: Partial<UserProfile>): Promise<void> {

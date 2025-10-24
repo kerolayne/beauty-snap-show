@@ -104,14 +104,7 @@ export type Professional = z.infer<typeof ProfessionalSchema>
 export type Appointment = z.infer<typeof AppointmentSchema>
 export type AppointmentStatus = z.infer<typeof AppointmentStatusSchema>
 export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>
-export type Availability = {
-  professional: {
-    id: string
-    name: string
-  }
-  date: string
-  slots: AvailabilitySlot[]
-}
+export type Availability = z.infer<typeof AvailabilitySchema>
 export type LoginCredentials = {
   email: string
   password: string
@@ -249,7 +242,8 @@ class FirestoreApiClient {
   }
 }
 
-export const apiClient = new FirestoreApiClient()
+// Base URL from environment variable
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 const AvailabilitySchema = z.object({
   professional: z.object({
@@ -267,13 +261,35 @@ const ApiResponseSchema = z.object({
   error: z.string().optional(),
 })
 
-// Types
-export type Service = z.infer<typeof ServiceSchema>
-export type Professional = z.infer<typeof ProfessionalSchema>
-export type Appointment = z.infer<typeof AppointmentSchema>
-export type AppointmentStatus = z.infer<typeof AppointmentStatusSchema>
-export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>
-export type Availability = z.infer<typeof AvailabilitySchema>
+// Auth schemas
+const SignUpRequestSchema = z.object({
+  name: z.string(),
+  email: z.string().email(),
+  password: z.string().min(6),
+  role: z.enum(['client', 'professional'])
+})
+
+const UserResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string().email(),
+  role: z.enum(['client', 'professional']),
+  createdAt: FirestoreTimestampSchema,
+  updatedAt: FirestoreTimestampSchema
+})
+
+const ValidationErrorSchema = z.object({
+  type: z.literal('validation'),
+  errors: z.array(z.object({
+    field: z.string(),
+    message: z.string()
+  }))
+})
+
+const EmailTakenErrorSchema = z.object({
+  type: z.literal('email_taken'),
+  message: z.string()
+})
 
 // Auth types
 export type SignUpRequest = z.infer<typeof SignUpRequestSchema>
